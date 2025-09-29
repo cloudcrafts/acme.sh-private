@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/bash
 
 #Support dingtalk webhooks api
 
@@ -14,6 +14,7 @@ dingtalk_send() {
   _subject="$1"
   _content="$2"
   _statusCode="$3" #0: success, 1: error 2($RENEW_SKIP): skipped
+  _mobiles="${4:-}"
   _debug "_subject" "$_subject"
   _debug "_content" "$_content"
   _debug "_statusCode" "$_statusCode"
@@ -51,9 +52,11 @@ dingtalk_send() {
   #    return 1
   #  fi
 
+  _mobiles=$(echo "$_mobiles" | _json_encode)
   _content=$(echo "$_content" | _json_encode)
   _subject=$(echo "$_subject" | _json_encode)
-  _data="{\"msgtype\": \"text\", \"text\": {\"content\": \"[$DINGTALK_KEYWORD]\n$_subject\n$_content\"}}"
+
+  _data="{\"msgtype\":\"text\",\"text\":{\"content\":\"[$DINGTALK_KEYWORD]\n$_subject\n$_content\"},\"at\":{\"atMobiles\":\"[$_mobiles]\",\"isAtAll\":\"false\"}}"
 
   response="$(_post "$_data" "$DINGTALK_WEBHOOK" "" "POST" "application/json")"
 
