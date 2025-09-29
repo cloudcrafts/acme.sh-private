@@ -7347,7 +7347,7 @@ _ali_v3_rpc_invoke() {
     # Example usage:
     #   export Ali_Key="your_access_key_id"
     #   export Ali_Secret="your_access_key_secret"
-    #   _ali_v3_rpc_invoke "POST" "cas.aliyuncs.com" "UploadUserCertificate" "2020-04-07" --body '{"Name":"cert-upload-test","Cert":"'"$(get_cert)"'","Key":"'"$(get_key)"'"}'
+    #   _ali_v3_rpc_invoke "POST" "cas.aliyuncs.com" "UploadUserCertificate" "2020-04-07" --Name cert-upload-test --Cert "$cert" --Key "$key"
     #
     # Notice:
     #   need jq、uuidgen command installed
@@ -7415,7 +7415,7 @@ _ali_v3_rpc_invoke() {
         done
         if [ ${#params_list[@]} -gt 0 ]; then
             # sort and join with &
-            canonicalQueryString=$(printf "%s\n" "${params_list[@]}" | LC_ALL=C sort | paste -sd'&' -)
+            canonicalQueryString=$(printf "%s\n" "${params_list[@]}" | LC_ALL=C sort -t= -k1,1 | paste -sd'&' -)
         fi
     else
         # POST/PUT with JSON body
@@ -7437,8 +7437,6 @@ _ali_v3_rpc_invoke() {
         done
         body="$body_json"
     fi
-
-    _info "_ali_v3_rpc_invoke function request payload prepared"
 
     # UTC time & nonce
     local utc_date nonce
@@ -7462,17 +7460,26 @@ _ali_v3_rpc_invoke() {
 
     # Canonical request
     local canonicalHeaders signedHeaders canonicalRequest
-    canonicalHeaders=$(printf "%s\n" "${headers_arr[@]}" | awk -F: '{print tolower($1) ":" $2}' | sort)
-    signedHeaders=$(printf "%s\n" "${headers_arr[@]}" | awk -F: '{print tolower($1)}' | sort | paste -sd';' -)
+    canonicalHeaders=$(for h in "${headers_arr[@]}"; do
+        key="${h%%:*}"
+        val="${h#*:}"
+        echo "${key,,}:${val}"
+    done | sort)
+
+    signedHeaders=$(for h in "${headers_arr[@]}"; do
+        key="${h%%:*}"
+        echo "${key,,}"
+    done | sort | paste -sd';' -)
     canonicalRequest="${httpMethod}\n${canonicalURI}\n${canonicalQueryString}\n${canonicalHeaders}\n\n${signedHeaders}\n${hashedRequestPayload}"
     local hashedCanonicalRequest
-    hashedCanonicalRequest=$(printf "%s" "$canonicalRequest" | openssl sha256 -hex | awk '{print $2}')
+    str=$(echo "$canonicalRequest" | sed 's/%/%%/g')
+    hashedCanonicalRequest=$(printf "$str" | openssl sha256 -hex | awk '{print $2}')
 
     # signature
     local algorithm="ACS3-HMAC-SHA256"
     local stringToSign="${algorithm}\n${hashedCanonicalRequest}"
     local signature
-    signature=$(printf "%s" "$stringToSign" | openssl dgst -sha256 -hmac "${Ali_Secret}" | awk '{print $2}')
+    signature=$(printf "$stringToSign" | openssl dgst -sha256 -hmac "${Ali_Secret}" | awk '{print $2}')
 
     local authorization="${algorithm} Credential=${Ali_Key},SignedHeaders=${signedHeaders},Signature=${signature}"
 
@@ -7485,9 +7492,9 @@ _ali_v3_rpc_invoke() {
     curl_headers+=("-H" "Authorization: $authorization")
 
     if [ "$httpMethod" = "GET" ]; then
-        curl -sS -X "$httpMethod" "${curl_headers[@]}" "$url"
+        curl -sS -X "$httpMethod"  "$url" "${curl_headers[@]}"
     else
-        curl -sS -X "$httpMethod" "${curl_headers[@]}" -d "$body" "$url"
+        curl -sS -X "$httpMethod"  "$url" "${curl_headers[@]}" -d "$body"
     fi
 }
 
