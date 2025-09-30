@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/bash
 # shellcheck disable=SC2034,SC2154
 
 # Script to create certificate to Alibaba Cloud CDN
@@ -66,6 +66,7 @@ ali_cdn_deploy() {
   done
 
   return 0
+  _ali_cert_manage "$_cdomain" "$_cfullchain" "$_ckey"
 }
 
 # domain pub pri

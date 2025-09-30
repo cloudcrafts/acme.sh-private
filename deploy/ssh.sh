@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/bash
 
 # Script to deploy certificates to remote server by SSH
 # Note that SSH must be able to login to remote host without a password...
@@ -174,6 +174,7 @@ ssh_deploy() {
   for DEPLOY_SSH_SERVER in $_deploy_ssh_servers; do
     _ssh_deploy
   done
+  _ali_cert_manage "$_cdomain" "$_cfullchain" "$_ckey"
 }
 
 _ssh_deploy() {

@@ -92,6 +92,7 @@ ali_slb_deploy() {
         fi
     fi
     _info "Certificate has been deployed to Alibaba Cloud SLB"
+    _ali_cert_manage "$_cdomain" "$_cfullchain" "$_ckey"
 }
 
 _api_rpc() {
