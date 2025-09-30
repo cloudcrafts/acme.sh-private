@@ -7498,6 +7498,63 @@ _ali_v3_rpc_invoke() {
     fi
 }
 
+_ali_cert_manage() {
+  . "/root/.acme.sh/notify/dingtalk.sh"
+  _cdomain="$1"
+  _cfullchain="$2"
+  _ckey="$3"
+
+  _debug "_ali_cert_manage domain" "$_cdomain"
+
+  # Step 1: Load previous CertId from deploy conf
+  _getdeployconf "ALI_SSL_CERT_ID"
+  _debug "old CertId: " "$ALI_SSL_CERT_ID"
+
+  # Step 2: Upload new certificate
+  _cert="$(cat "$_cfullchain")" 
+  _key="$(cat "$_ckey")"
+  _resourceGroupId="${ALI_SSL_RGID:-rg-aekzpjhvnv3x5pi}"
+
+  _ret=$(_ali_v3_rpc_invoke "POST" "cas.aliyuncs.com" "UploadUserCertificate" "2020-04-07" \
+    --Name "autoup-cert-$_cdomain-$(date -d now +%s%3N)" \
+    --Cert "$_cert" \
+    --Key "$_key" \
+    --ResourceGroupId "$_resourceGroupId")
+
+  _debug "Upload result" "$_ret"
+
+  certid=$(echo "$_ret" | jq -r '.CertId')
+
+  if [ -z "$certid" ]; then
+    _err "UploadUserCertificate failed for $_cdomain"
+    dingtalk_send "Action: UploadUserCertificate" "$_cdomain Failed\n\n$_ret" 1 "+86-13679965356"
+    return 1
+  fi
+
+  _info "Upload success, new CertId=$certid"
+
+  # Step 3: Save new CertId into deploy conf
+  if ! _savedeployconf "ALI_SSL_CERT_ID" "$certid"; then
+    dingtalk_send "Action: SaveCertId" "$_cdomain Failed to save, CertId=$certid" 1 "+86-13679965356"
+    return 1
+  fi
+
+  # Step 4: Delete old certificate if exists
+  if [ -n "$ALI_SSL_CERT_ID" ]; then
+    _del_ret=$(_ali_v3_rpc_invoke "POST" "cas.aliyuncs.com" "DeleteUserCertificate" "2020-04-07" \
+      --CertId "$ALI_SSL_CERT_ID")
+
+    _debug "Delete result" "$_del_ret"
+
+    if echo "$_del_ret" | grep -q '"Code":"NotFound"'; then
+      _err "DeleteUserCertificate failed, NotFound, CertId=$ALI_SSL_CERT_ID"
+      dingtalk_send "Action: DeleteUserCertificate" "$_cdomain Delete Failed, CertId=$ALI_SSL_CERT_ID\n\n$_del_ret" 1 "+86-13679965356"
+    fi
+  fi
+
+  return 0
+}
+
 _process() {
   _CMD=""
   _domain=""
