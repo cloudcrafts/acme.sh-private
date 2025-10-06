@@ -64,9 +64,9 @@ ali_dcdn_deploy() {
       _info "Domain $domain certificate has been deployed successfully"
     fi
   done
-
-  return 0
+  
   _ali_cert_manage "$_cdomain" "$_cfullchain" "$_ckey"
+  return 0
 }
 
 # domain pub pri

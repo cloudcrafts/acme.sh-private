@@ -65,8 +65,8 @@ ali_cdn_deploy() {
     fi
   done
 
-  return 0
   _ali_cert_manage "$_cdomain" "$_cfullchain" "$_ckey"
+  return 0
 }
 
 # domain pub pri
