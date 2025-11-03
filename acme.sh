@@ -7508,15 +7508,20 @@ _ali_cert_manage() {
 
   # Step 1: Load previous CertId from deploy conf
   _getdeployconf "ALI_SSL_CERT_ID"
+  _getdeployconf "ALI_SSL_USE_HOST_NAME"
   _debug "old CertId: " "$ALI_SSL_CERT_ID"
 
   # Step 2: Upload new certificate
   _cert="$(cat "$_cfullchain")" 
   _key="$(cat "$_ckey")"
   _resourceGroupId="${ALI_SSL_RGID:-rg-aekzpjhvnv3x5pi}"
+  _host_name="$_cdomain"
+
+  if [ "$ALI_SSL_USE_HOST_NAME" = "true" ];then _host_name=$(echo "$_host_name" | head -c 36);fi
+  _name="autoup-cert-$_host_name-$(date -d now +%s%3N)"
 
   _ret=$(_ali_v3_rpc_invoke "POST" "cas.aliyuncs.com" "UploadUserCertificate" "2020-04-07" \
-    --Name "autoup-cert-$_cdomain-$(date -d now +%s%3N)" \
+    --Name "$_name" \
     --Cert "$_cert" \
     --Key "$_key" \
     --ResourceGroupId "$_resourceGroupId")
