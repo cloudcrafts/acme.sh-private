@@ -7525,7 +7525,7 @@ _ali_cert_manage() {
 
   certid=$(echo "$_ret" | jq -r '.CertId')
 
-  if [ -z "$certid" ]; then
+  if [ -z "$certid" ] || [ "$certid" = "null" ]; then
     _err "UploadUserCertificate failed for $_cdomain"
     dingtalk_send "Action: UploadUserCertificate" "$_cdomain Failed\n\n$_ret" 1 "+86-13679965356"
     return 1
