@@ -199,6 +199,32 @@ _ssh_deploy() {
 
   _info "Deploy certificates to remote server $DEPLOY_SSH_USER@$_host:$_port"
 
+  ##############################
+  # 新增：自动创建证书文件的上级目录（核心代码）
+  ##############################
+  # 1. 收集所有证书/密钥文件的路径
+  _cert_paths=("$DEPLOY_SSH_KEYFILE" "$DEPLOY_SSH_CERTFILE" "$DEPLOY_SSH_CAFILE" "$DEPLOY_SSH_FULLCHAIN")
+  # 2. 遍历路径，提取目录并去重
+  _target_dirs=()
+  for _path in "${_cert_paths[@]}"; do
+    if [ -n "$_path" ]; then  # 跳过空路径
+      _dir=$(dirname "$_path")  # 提取上级目录（如 /data/ssl/qiyou.vip/）
+      _target_dirs+=("$_dir")
+    fi
+  done
+  # 3. 去重（避免重复创建同一目录）
+  _unique_dirs=($(echo "${_target_dirs[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+  # 4. 拼接创建目录的命令（在目标服务器执行）
+  for _dir in "${_unique_dirs[@]}"; do
+    if [ -n "$_dir" ]; then
+      _cmdstr="mkdir -p $_dir; $_cmdstr"  # mkdir -p 递归创建目录
+      _info "Will create remote directory (if not exists): $_dir"
+    fi
+  done
+  ##############################
+  # 新增代码结束
+  ##############################
+  
   if [ "$DEPLOY_SSH_BACKUP" = "yes" ]; then
     _backupprefix="$DEPLOY_SSH_BACKUP_PATH/$_cdomain-backup"
     _backupdir="$_backupprefix-$(_utc_date | tr ' ' '-')"
